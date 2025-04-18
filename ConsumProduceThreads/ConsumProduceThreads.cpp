@@ -7,10 +7,22 @@
 #include <queue>
 #include <vector>
 using namespace std;
-
+/*
+The mutex class is a synchronization primitive that can be used to protect shared data from being simultaneously accessed by multiple threads.
+mutex offers exclusive, non-recursive ownership semantics:
+A calling thread owns a mutex from the time that it successfully calls either lock or try_lock until it calls unlock.
+When a thread owns a mutex, all other threads will block (for calls to lock) or receive a false return value (for try_lock) if they attempt to claim ownership of the mutex.
+A calling thread must not own the mutex prior to calling lock or try_lock.
+*/
 mutex mtx;
+/*
+std::condition_variable is a synchronization primitive used with a std::mutex
+to block one or more threads until another thread both modifies a shared variable (the condition) and notifies the std::condition_variable.
+*/
 condition_variable cv;
+//Атомарная переменная для проверки, работает ли поток
 atomic<bool> running(true);
+//Очередь задач
 queue<int> taskQueue;
 int totalSum = 0;
 
@@ -36,8 +48,22 @@ void producer() {
 void consumer(int id) {
     while (running || !taskQueue.empty()) {
         unique_lock<mutex> lock(mtx);
+        //Переменная, блокирующая выполнение кода (мьютекс)
+        /*
+        std::condition_variable is a synchronization primitive used with a std::mutex to block one or more threads until another thread both modifies a shared variable (the condition) and notifies the std::condition_variable.
+
+        The thread that intends to modify the shared variable must:
+
+        Acquire a std::mutex (typically via std::lock_guard).
+        Modify the shared variable while the lock is owned.
+        Call notify_one or notify_all on the std::condition_variable (can be done after releasing the lock).
+        Even if the shared variable is atomic, it must be modified while owning the mutex to correctly publish the modification to the waiting thread.
+
+        https://en.cppreference.com/w/cpp/thread/condition_variable
+        */
         cv.wait(lock, [] { return !running || !taskQueue.empty(); });
 
+        //Если задач нет и программа не работает - выходим
         if (!running && taskQueue.empty()) break;
 
         if (!taskQueue.empty()) {
@@ -48,7 +74,7 @@ void consumer(int id) {
             // Имитация обработки
             this_thread::sleep_for(chrono::seconds(2));
 
-            // Обновление суммы
+            // Обновление суммы (используем мьютекс, чтобы заблокировать доступ)
             lock.lock();
             totalSum += currentNumber;
             cout << "Consumer " << id << ": Added " << currentNumber
