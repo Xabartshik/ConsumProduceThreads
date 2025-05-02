@@ -33,6 +33,7 @@ void producer() {
 
         if (input == 0) {
             running = false;
+            //Оповещает все потоки. Используется для завершения работы
             cv.notify_all();
             break;
         }
@@ -61,6 +62,7 @@ void consumer(int id) {
 
         https://en.cppreference.com/w/cpp/thread/condition_variable
         */
+        //Потоки ожидают изменения состояния wait
         cv.wait(lock, [] { return !running || !taskQueue.empty(); });
 
         //Если задач нет и программа не работает - выходим
@@ -80,6 +82,7 @@ void consumer(int id) {
             cout << "Consumer " << id << ": Added " << currentNumber
                 << ", Total sum: " << totalSum << endl;
             lock.unlock();
+            //Разблокирует после выполнения кода потоком, позволяя другим потокам обновить значения
         }
     }
 }
